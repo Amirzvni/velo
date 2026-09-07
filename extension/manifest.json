@@ -23,6 +23,12 @@
     "48": "icons/48.png",
     "128": "icons/128.png"
   },
+  "web_accessible_resources": [
+    {
+      "resources": ["panel.css"],
+      "matches": ["http://*/*", "https://*/*"]
+    }
+  ],
   "content_scripts": [
     {
       "matches": ["http://*/*", "https://*/*"],

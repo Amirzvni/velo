@@ -37,20 +37,65 @@ function nameOf(url: string): string {
   }
 }
 
-/** Every anchor that looks like a file, deduplicated, in page order. */
-function scan(): Found[] {
+/** Anchors the user highlighted. Empty when nothing is selected. */
+function anchorsInSelection(): HTMLAnchorElement[] {
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || sel.rangeCount === 0) return [];
+
+  const out: HTMLAnchorElement[] = [];
+  const seen = new Set<HTMLAnchorElement>();
+
+  for (let i = 0; i < sel.rangeCount; i++) {
+    const range = sel.getRangeAt(i);
+
+    // An anchor counts as selected if the selection touches any part of it.
+    // intersectsNode catches partly highlighted links, which is what people
+    // get when they drag across a list.
+    const all = document.querySelectorAll<HTMLAnchorElement>("a[href]");
+    for (const a of Array.from(all)) {
+      if (seen.has(a)) continue;
+      let hit = false;
+      try {
+        hit = range.intersectsNode(a);
+      } catch {
+        hit = false;
+      }
+      if (!hit) continue;
+      seen.add(a);
+      out.push(a);
+    }
+  }
+  return out;
+}
+
+/** Turn anchors into download candidates, deduplicated, in page order. */
+function collect(anchors: HTMLAnchorElement[], strict: boolean): Found[] {
   const seen = new Set<string>();
   const out: Found[] = [];
-  for (const a of Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"))) {
+  for (const a of anchors) {
     const href = a.href;
     if (!/^https?:\/\//i.test(href) || seen.has(href)) continue;
     const ext = extOf(href);
-    // Either a known file extension, or the author marked it as a download.
-    if (!DOWNLOADABLE.has(ext) && !a.hasAttribute("download")) continue;
+    // In strict mode we only take things that look like files. When the user
+    // hand picked the links we trust them and take everything.
+    if (strict && !DOWNLOADABLE.has(ext) && !a.hasAttribute("download")) continue;
     seen.add(href);
     out.push({ url: href, name: nameOf(href), ext: ext || "file" });
   }
   return out;
+}
+
+/**
+ * What the picker should show: the user's selection when there is one,
+ * otherwise every file looking link on the page.
+ */
+function scan(): { found: Found[]; fromSelection: boolean } {
+  const selected = anchorsInSelection();
+  if (selected.length) {
+    return { found: collect(selected, false), fromSelection: true };
+  }
+  const all = Array.from(document.querySelectorAll<HTMLAnchorElement>("a[href]"));
+  return { found: collect(all, true), fromSelection: false };
 }
 
 // ---- panel ---------------------------------------------------------------
@@ -62,7 +107,7 @@ function closePanel() {
   host = null;
 }
 
-function openPanel(found: Found[]) {
+function openPanel(found: Found[], fromSelection: boolean) {
   closePanel();
 
   host = document.createElement("div");
@@ -79,7 +124,10 @@ function openPanel(found: Found[]) {
       <span class="velo-title">Download with Velo</span>
       <button class="velo-x" title="Close">&#10005;</button>
     </div>
-    <div class="velo-sub"><span class="velo-count">${found.length}</span> links found</div>
+    <div class="velo-sub">
+      <span class="velo-count">${found.length}</span>
+      ${fromSelection ? "links in your selection" : "links found on this page"}
+    </div>
     <div class="velo-tools">
       <button class="velo-mini" data-act="all">All</button>
       <button class="velo-mini" data-act="none">None</button>
@@ -181,19 +229,26 @@ function openPanel(found: Found[]) {
 
 // ---- triggers ------------------------------------------------------------
 
-chrome.runtime.onMessage.addListener((msg) => {
-  if (msg?.type !== "velo:open-picker") return;
-  const found = scan();
+function trigger() {
+  const { found, fromSelection } = scan();
   if (!found.length) {
-    alert("Velo found no downloadable links on this page.");
+    alert(
+      fromSelection
+        ? "Velo found no links inside your selection."
+        : "Velo found no downloadable links on this page.",
+    );
     return;
   }
-  openPanel(found);
+  openPanel(found, fromSelection);
+}
+
+chrome.runtime.onMessage.addListener((msg) => {
+  if (msg?.type !== "velo:open-picker") return;
+  trigger();
 });
 
-// Selecting several links and pressing Alt+V opens the picker for them.
+// Select several links and press Alt+V to open the picker for them.
 document.addEventListener("keydown", (e) => {
   if (!e.altKey || e.key.toLowerCase() !== "v") return;
-  const found = scan();
-  if (found.length) openPanel(found);
+  trigger();
 });

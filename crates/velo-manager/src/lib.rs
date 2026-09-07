@@ -21,6 +21,16 @@ pub const DEFAULT_MAX_CONCURRENT: usize = 4;
 const JOURNAL_INTERVAL: Duration = Duration::from_millis(1000);
 /// How often the scheduler looks for work when idle.
 const POLL_INTERVAL: Duration = Duration::from_millis(500);
+/// Total connections we allow against a single host, across every download.
+/// Servers cap connections per client ip, so two downloads each opening eight
+/// makes both of them slow instead of making either one fast.
+const DEFAULT_HOST_CONNECTIONS: usize = 8;
+/// Downloads allowed to run at once against a single host. One is what curl
+/// and pyload settle on: a server caps connections per client anyway, so two
+/// downloads sharing that cap finish no sooner than one after the other, and
+/// both look broken while they crawl. Files from different hosts still run in
+/// parallel up to `max_concurrent`.
+const DEFAULT_DOWNLOADS_PER_HOST: usize = 1;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ManagerError {
@@ -108,6 +118,8 @@ pub struct Manager {
     active: Arc<Mutex<HashMap<i64, Active>>>,
     events: mpsc::UnboundedSender<Event>,
     max_concurrent: Arc<Mutex<usize>>,
+    /// How many downloads are currently running against each host.
+    active_hosts: Arc<Mutex<HashMap<String, usize>>>,
 }
 
 impl Manager {
@@ -126,6 +138,7 @@ impl Manager {
             active: Arc::new(Mutex::new(HashMap::new())),
             events: tx,
             max_concurrent: Arc::new(Mutex::new(max)),
+            active_hosts: Arc::new(Mutex::new(HashMap::new())),
         });
         Ok((mgr, rx))
     }
@@ -233,6 +246,32 @@ impl Manager {
         Ok(())
     }
 
+    /// Connections for one download. The whole host budget goes to it, because
+    /// only one download per host runs at a time.
+    fn segments_for_host(&self, host: Option<&str>, requested: u8) -> u8 {
+        let Some(host) = host else {
+            return requested;
+        };
+        let budget = self
+            .store
+            .get_host_limit(host)
+            .ok()
+            .flatten()
+            .map(|v| v as usize)
+            .unwrap_or(DEFAULT_HOST_CONNECTIONS)
+            .clamp(1, 32);
+        (budget as u8).min(requested)
+    }
+
+    /// True when this host already has as many downloads running as we allow.
+    /// The download stays queued and starts the moment a slot frees up.
+    fn host_is_busy(&self, host: Option<&str>) -> bool {
+        let Some(host) = host else {
+            return false;
+        };
+        self.active_hosts.lock().get(host).copied().unwrap_or(0) >= DEFAULT_DOWNLOADS_PER_HOST
+    }
+
     /// Whether browser downloads should ask first. Defaults to yes.
     pub fn confirm_browser_downloads(&self) -> bool {
         self.store
@@ -324,8 +363,22 @@ impl Manager {
             return Ok(());
         }
         let free = max - running;
-        for row in self.store.next_queued(free)? {
+        // Ask for more than we can start: rows whose host is already busy get
+        // skipped, and we want to reach the ones behind them.
+        for row in self.store.next_queued(free * 8 + 8)? {
+            if self.active.lock().len() >= max {
+                break;
+            }
             if self.active.lock().contains_key(&row.id) {
+                continue;
+            }
+            // One download per host at a time. The rest stay queued and start
+            // the moment that host frees up, each getting the full connection
+            // budget instead of a slice of it.
+            let host = url::Url::parse(&row.url)
+                .ok()
+                .and_then(|u| u.host_str().map(String::from));
+            if self.host_is_busy(host.as_deref()) {
                 continue;
             }
             if let Err(e) = self.spawn_one(row.clone()).await {
@@ -348,16 +401,13 @@ impl Manager {
         let host = url::Url::parse(&row.url)
             .ok()
             .and_then(|u| u.host_str().map(String::from));
-        let segments = match &host {
-            Some(h) => self
-                .store
-                .get_host_limit(h)
-                .ok()
-                .flatten()
-                .map(|lim| (lim as u8).min(row.segments))
-                .unwrap_or(row.segments),
-            None => row.segments,
-        };
+        // Share the host's connection budget with anything already running
+        // against it, so N downloads on one server do not open N times the
+        // connections the server is willing to serve.
+        let segments = self.segments_for_host(host.as_deref(), row.segments);
+        if let Some(h) = &host {
+            *self.active_hosts.lock().entry(h.clone()).or_insert(0) += 1;
+        }
 
         let spec = DownloadSpec {
             url: row.url.clone(),
@@ -384,6 +434,7 @@ impl Manager {
         let id = row.id;
         let events = self.events.clone();
         let store = self.store.clone();
+        // Every download to the same host shares one connection budget.
         let handle = download(
             &self.client,
             spec,
@@ -482,6 +533,15 @@ impl Manager {
                 break;
             }
             me.active.lock().remove(&id);
+            if let Some(h) = &host {
+                let mut hosts = me.active_hosts.lock();
+                if let Some(n) = hosts.get_mut(h) {
+                    *n = n.saturating_sub(1);
+                    if *n == 0 {
+                        hosts.remove(h);
+                    }
+                }
+            }
         });
 
         Ok(())

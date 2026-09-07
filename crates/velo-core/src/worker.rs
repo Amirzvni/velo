@@ -45,8 +45,8 @@ pub struct WorkerCtx {
     pub file: Arc<File>,
     /// Total bytes written across all segments, for the progress meter.
     pub total_written: Arc<AtomicU64>,
-    /// Caps how many requests we have open to this host at once. The engine
-    /// shrinks it when the server answers 429 so we stop annoying it.
+    /// Caps how many requests this one download has open. The engine shrinks
+    /// it when the server answers 429 so we stop annoying it.
     pub permits: Arc<Semaphore>,
     /// Flips to true on pause or cancel.
     pub stop: watch::Receiver<bool>,

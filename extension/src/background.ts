@@ -89,8 +89,16 @@ chrome.runtime.onInstalled.addListener(() => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === "velo-page" && tab?.id) {
-    // Ask the content script to open its link picker.
-    chrome.tabs.sendMessage(tab.id, { type: "velo:open-picker" });
+    const tabId = tab.id;
+    try {
+      await chrome.tabs.sendMessage(tabId, { type: "velo:open-picker" });
+    } catch {
+      // The page was open before the extension loaded, so no content script
+      // is there to answer. Inject it, then ask again.
+      await chrome.scripting.executeScript({ target: { tabId }, files: ["content.js"] });
+      await chrome.scripting.insertCSS({ target: { tabId }, files: ["panel.css"] });
+      await chrome.tabs.sendMessage(tabId, { type: "velo:open-picker" });
+    }
     return;
   }
 

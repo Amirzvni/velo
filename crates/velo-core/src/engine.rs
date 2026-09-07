@@ -80,6 +80,15 @@ pub async fn download(
     resume: Option<(PathBuf, Vec<SegmentState>)>,
     on_progress: impl Fn(ProgressSnapshot) + Send + 'static,
 ) -> Result<DownloadHandle> {
+    download_inner(client, spec, resume, on_progress).await
+}
+
+async fn download_inner(
+    client: &Client,
+    spec: DownloadSpec,
+    resume: Option<(PathBuf, Vec<SegmentState>)>,
+    on_progress: impl Fn(ProgressSnapshot) + Send + 'static,
+) -> Result<DownloadHandle> {
     let info = probe(client, &spec).await?;
 
     let (path, planned) = match resume {
