@@ -13,6 +13,8 @@ path = "src/main.rs"
 
 [dependencies]
 velo-core = { path = "../velo-core" }
+velo-store = { path = "../velo-store" }
+velo-manager = { path = "../velo-manager" }
 tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }

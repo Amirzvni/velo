@@ -3,6 +3,7 @@
 pub mod engine;
 pub mod error;
 pub mod fsutil;
+pub mod paths;
 pub mod probe;
 pub mod segment;
 pub mod worker;
