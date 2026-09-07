@@ -1,0 +1,25 @@
+# rust
+target/
+**/*.rs.bk
+# node
+node_modules/
+dist/
+.vite/
+# tauri
+src-tauri/target/
+src-tauri/gen/
+# extension build
+extension/dist/
+# os / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+# local runtime state
+*.db
+*.db-wal
+*.db-shm
+*.log
+.velo/
