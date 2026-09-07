@@ -83,8 +83,18 @@ mod tests {
     #[test]
     fn steals_from_the_slowest() {
         let segs = vec![
-            SegmentState { index: 0, start: 0, end: 10, cursor: 10 },
-            SegmentState { index: 1, start: 10, end: 10_000_000, cursor: 20 },
+            SegmentState {
+                index: 0,
+                start: 0,
+                end: 10,
+                cursor: 10,
+            },
+            SegmentState {
+                index: 1,
+                start: 10,
+                end: 10_000_000,
+                cursor: 20,
+            },
         ];
         let (idx, split) = find_steal_target(&segs, 1024).unwrap();
         assert_eq!(idx, 1);
@@ -93,7 +103,12 @@ mod tests {
 
     #[test]
     fn wont_steal_tiny_leftovers() {
-        let segs = vec![SegmentState { index: 0, start: 0, end: 1000, cursor: 0 }];
+        let segs = vec![SegmentState {
+            index: 0,
+            start: 0,
+            end: 1000,
+            cursor: 0,
+        }];
         assert!(find_steal_target(&segs, 1024).is_none());
     }
 }

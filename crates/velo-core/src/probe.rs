@@ -64,18 +64,29 @@ pub async fn probe(client: &Client, spec: &DownloadSpec) -> Result<ProbeResult> 
             .and_then(|v| v.rsplit('/').next().map(|s| s.to_string()))
             .and_then(|s| s.parse::<u64>().ok())
     } else {
-        h.get(CONTENT_LENGTH).and_then(|v| v.to_str().ok()).and_then(|s| s.parse::<u64>().ok())
+        h.get(CONTENT_LENGTH)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|s| s.parse::<u64>().ok())
     };
 
-    let etag = h.get(ETAG).and_then(|v| v.to_str().ok()).map(str::to_string);
-    let last_modified = h.get(LAST_MODIFIED).and_then(|v| v.to_str().ok()).map(str::to_string);
+    let etag = h
+        .get(ETAG)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
+    let last_modified = h
+        .get(LAST_MODIFIED)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
     let mime = h
         .get(CONTENT_TYPE)
         .and_then(|v| v.to_str().ok())
         .map(|s| s.split(';').next().unwrap_or(s).trim().to_string());
 
     let final_url = resp.url().clone();
-    let disposition = h.get(CONTENT_DISPOSITION).and_then(|v| v.to_str().ok()).map(str::to_string);
+    let disposition = h
+        .get(CONTENT_DISPOSITION)
+        .and_then(|v| v.to_str().ok())
+        .map(str::to_string);
 
     let file_name = match &spec.file_name {
         Some(n) => sanitize_file_name(n)?,
@@ -107,7 +118,10 @@ pub fn detect_file_name(
         }
     }
 
-    if let Some(seg) = url.path_segments().and_then(|s| s.filter(|p| !p.is_empty()).next_back()) {
+    if let Some(seg) = url
+        .path_segments()
+        .and_then(|s| s.filter(|p| !p.is_empty()).next_back())
+    {
         let decoded = percent_decode_str(seg).decode_utf8_lossy().to_string();
         if let Ok(safe) = sanitize_file_name(&decoded) {
             return Ok(safe);
@@ -148,7 +162,10 @@ mod tests {
 
     #[test]
     fn disposition_forms() {
-        assert_eq!(parse_disposition("attachment; filename=\"a b.zip\"").unwrap(), "a b.zip");
+        assert_eq!(
+            parse_disposition("attachment; filename=\"a b.zip\"").unwrap(),
+            "a b.zip"
+        );
         assert_eq!(
             parse_disposition("attachment; filename*=UTF-8''%D9%81%D8%A7%DB%8C%D9%84.pdf").unwrap(),
             "فایل.pdf"

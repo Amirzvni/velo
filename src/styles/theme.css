@@ -1,0 +1,182 @@
+/* Velo cyberpunk theme. Tokens live here; components never hardcode colors. */
+
+@font-face {
+  font-family: "Rajdhani";
+  src: local("Rajdhani"), local("Rajdhani SemiBold");
+  font-display: swap;
+}
+
+:root {
+  --bg: #0d0d0d;
+  --surface: #141414;
+  --surface-2: #1c1c1c;
+  --surface-3: #242424;
+  --border: #2a2a2a;
+  --border-hot: #3a3a1a;
+
+  --yellow: #fcee0a;
+  --cyan: #00f0ff;
+  --magenta: #ff003c;
+  --green: #39ff14;
+  --orange: #ff9f1c;
+
+  --text: #e6e6e6;
+  --text-dim: #8a8a8a;
+  --text-faint: #5a5a5a;
+  --on-accent: #0d0d0d;
+
+  --font-ui: "Rajdhani", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Mono", Consolas, monospace;
+
+  --radius: 2px;
+  --fast: 120ms;
+
+  --row-h: 56px;
+  --sidebar-w: 190px;
+  --titlebar-h: 36px;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  overflow: hidden;
+  /* Native text selection is off except where we opt in; feels like an app. */
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Optional scanline overlay. Toggled off via [data-scanlines="off"]. */
+#app::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.03) 0px,
+    rgba(255, 255, 255, 0.03) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+[data-scanlines="off"]::after {
+  display: none;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border: 1px solid var(--border);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--yellow);
+}
+
+/* ---- shared primitives ---- */
+
+.label {
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 8px 16px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: background var(--fast) linear, color var(--fast) linear,
+    border-color var(--fast) linear;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--yellow);
+  color: var(--yellow);
+}
+.btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--yellow);
+  color: var(--on-accent);
+  border-color: var(--yellow);
+  /* Clipped corner is the signature shape. */
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 8px 100%, 0 calc(100% - 8px));
+}
+.btn-primary:hover:not(:disabled) {
+  background: #fff86b;
+  color: var(--on-accent);
+}
+
+.btn-danger:hover:not(:disabled) {
+  border-color: var(--magenta);
+  color: var(--magenta);
+}
+
+.input {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  padding: 9px 11px;
+  background: var(--surface-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  user-select: text;
+}
+.input:focus {
+  border-color: var(--cyan);
+}
+.input::placeholder {
+  color: var(--text-faint);
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+/* Status colors, used by dots, bars and text alike. */
+.s-queued { color: var(--text-dim); }
+.s-running { color: var(--yellow); }
+.s-paused { color: var(--orange); }
+.s-completed { color: var(--green); }
+.s-failed { color: var(--magenta); }

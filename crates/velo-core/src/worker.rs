@@ -32,7 +32,9 @@ impl SegmentHandle {
         }
     }
     pub fn remaining(&self) -> u64 {
-        self.end.load(Ordering::Acquire).saturating_sub(self.cursor.load(Ordering::Acquire))
+        self.end
+            .load(Ordering::Acquire)
+            .saturating_sub(self.cursor.load(Ordering::Acquire))
     }
 }
 
@@ -54,7 +56,13 @@ pub struct WorkerCtx {
 const WRITE_BUFFER: usize = 256 * 1024;
 
 fn retry_after_secs(resp: &reqwest::Response) -> Option<u64> {
-    resp.headers().get(RETRY_AFTER)?.to_str().ok()?.trim().parse::<u64>().ok()
+    resp.headers()
+        .get(RETRY_AFTER)?
+        .to_str()
+        .ok()?
+        .trim()
+        .parse::<u64>()
+        .ok()
 }
 
 /// Download one segment. Retries are handled by the engine, not here.

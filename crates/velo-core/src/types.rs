@@ -57,7 +57,12 @@ pub struct SegmentState {
 
 impl SegmentState {
     pub fn new(index: u16, start: u64, end: u64) -> Self {
-        Self { index, start, end, cursor: start }
+        Self {
+            index,
+            start,
+            end,
+            cursor: start,
+        }
     }
     pub fn remaining(&self) -> u64 {
         self.end.saturating_sub(self.cursor)

@@ -19,7 +19,9 @@ pub fn default_download_dir() -> PathBuf {
 
 /// Where the database, logs and config live.
 pub fn app_data_dir() -> PathBuf {
-    dirs::data_dir().map(|d| d.join(APP_DIR_NAME)).unwrap_or_else(|| PathBuf::from("./.velo"))
+    dirs::data_dir()
+        .map(|d| d.join(APP_DIR_NAME))
+        .unwrap_or_else(|| PathBuf::from("./.velo"))
 }
 
 pub fn database_path() -> PathBuf {
@@ -36,7 +38,11 @@ pub fn ensure_dirs() -> std::io::Result<()> {
 /// Sort finished files into subfolders by kind. Beginners like this, and it is
 /// off by default for anyone who does not.
 pub fn category_for(mime: Option<&str>, file_name: &str) -> &'static str {
-    let ext = file_name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    let ext = file_name
+        .rsplit('.')
+        .next()
+        .unwrap_or("")
+        .to_ascii_lowercase();
     match ext.as_str() {
         "mp4" | "mkv" | "avi" | "mov" | "webm" | "flv" | "wmv" => "Video",
         "mp3" | "flac" | "wav" | "aac" | "ogg" | "m4a" => "Audio",

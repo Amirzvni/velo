@@ -27,7 +27,10 @@ pub enum StoreError {
 pub type Result<T> = std::result::Result<T, StoreError>;
 
 pub fn now() -> i64 {
-    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0)
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 pub struct Store {
@@ -41,13 +44,17 @@ impl Store {
         }
         let conn = Connection::open(path)?;
         schema::migrate(&conn)?;
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 
     pub fn open_in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
         schema::migrate(&conn)?;
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self {
+            conn: Mutex::new(conn),
+        })
     }
 
     // ---- downloads -------------------------------------------------------
@@ -81,9 +88,13 @@ impl Store {
 
     pub fn get(&self, id: i64) -> Result<DownloadRow> {
         let conn = self.conn.lock();
-        conn.query_row("SELECT * FROM downloads WHERE id = ?1", params![id], row_to_download)
-            .optional()?
-            .ok_or(StoreError::NotFound(id))
+        conn.query_row(
+            "SELECT * FROM downloads WHERE id = ?1",
+            params![id],
+            row_to_download,
+        )
+        .optional()?
+        .ok_or(StoreError::NotFound(id))
     }
 
     pub fn list(&self, status_filter: Option<&str>) -> Result<Vec<DownloadRow>> {
@@ -91,9 +102,8 @@ impl Store {
         let mut out = Vec::new();
         match status_filter {
             Some(s) => {
-                let mut stmt = conn.prepare(
-                    "SELECT * FROM downloads WHERE status = ?1 ORDER BY priority, id",
-                )?;
+                let mut stmt = conn
+                    .prepare("SELECT * FROM downloads WHERE status = ?1 ORDER BY priority, id")?;
                 for r in stmt.query_map(params![s], row_to_download)? {
                     out.push(r?);
                 }
@@ -117,8 +127,12 @@ impl Store {
              ORDER BY priority, id
              LIMIT ?3",
         )?;
-        let rows = stmt.query_map(params![status::QUEUED, now(), limit as i64], row_to_download)?;
-        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+        let rows = stmt.query_map(
+            params![status::QUEUED, now(), limit as i64],
+            row_to_download,
+        )?;
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     pub fn count_by_status(&self, s: &str) -> Result<i64> {
@@ -132,7 +146,11 @@ impl Store {
 
     pub fn set_status(&self, id: i64, s: &str, error: Option<&str>) -> Result<()> {
         let conn = self.conn.lock();
-        let completed = if s == status::COMPLETED { Some(now()) } else { None };
+        let completed = if s == status::COMPLETED {
+            Some(now())
+        } else {
+            None
+        };
         conn.execute(
             "UPDATE downloads
              SET status = ?1, error = ?2, updated_at = ?3,
@@ -211,7 +229,11 @@ impl Store {
                     s.index as i64,
                     s.start as i64,
                     // u64::MAX does not fit in SQLite's signed integer.
-                    if s.end == u64::MAX { i64::MAX } else { s.end as i64 },
+                    if s.end == u64::MAX {
+                        i64::MAX
+                    } else {
+                        s.end as i64
+                    },
                     s.cursor as i64
                 ])?;
             }
@@ -230,11 +252,16 @@ impl Store {
             Ok(SegmentState {
                 index: r.get::<_, i64>(0)? as u16,
                 start: r.get::<_, i64>(1)? as u64,
-                end: if end == i64::MAX { u64::MAX } else { end as u64 },
+                end: if end == i64::MAX {
+                    u64::MAX
+                } else {
+                    end as u64
+                },
                 cursor: r.get::<_, i64>(3)? as u64,
             })
         })?;
-        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     // ---- batches ---------------------------------------------------------
@@ -259,7 +286,8 @@ impl Store {
                 created_at: r.get("created_at")?,
             })
         })?;
-        rows.collect::<rusqlite::Result<Vec<_>>>().map_err(Into::into)
+        rows.collect::<rusqlite::Result<Vec<_>>>()
+            .map_err(Into::into)
     }
 
     // ---- settings and host limits ---------------------------------------
@@ -267,7 +295,11 @@ impl Store {
     pub fn get_setting(&self, key: &str) -> Result<Option<String>> {
         let conn = self.conn.lock();
         Ok(conn
-            .query_row("SELECT value FROM settings WHERE key = ?1", params![key], |r| r.get(0))
+            .query_row(
+                "SELECT value FROM settings WHERE key = ?1",
+                params![key],
+                |r| r.get(0),
+            )
             .optional()?)
     }
 
@@ -374,8 +406,18 @@ mod tests {
         let s = Store::open_in_memory().unwrap();
         let id = s.insert_download(&new_dl("https://x.com/a.zip")).unwrap();
         let segs = vec![
-            SegmentState { index: 0, start: 0, end: 100, cursor: 50 },
-            SegmentState { index: 1, start: 100, end: u64::MAX, cursor: 100 },
+            SegmentState {
+                index: 0,
+                start: 0,
+                end: 100,
+                cursor: 50,
+            },
+            SegmentState {
+                index: 1,
+                start: 100,
+                end: u64::MAX,
+                cursor: 100,
+            },
         ];
         s.save_segments(id, &segs).unwrap();
         let back = s.load_segments(id).unwrap();

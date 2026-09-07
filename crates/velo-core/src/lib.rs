@@ -6,8 +6,8 @@ pub mod fsutil;
 pub mod paths;
 pub mod probe;
 pub mod segment;
-pub mod worker;
 pub mod types;
+pub mod worker;
 
 pub use error::{Result, VeloError};
 pub use types::*;

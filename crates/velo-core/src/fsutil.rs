@@ -24,7 +24,13 @@ pub fn sanitize_file_name(raw: &str) -> Result<String> {
 
     let cleaned: String = base
         .chars()
-        .map(|c| if FORBIDDEN.contains(&c) || (c as u32) < 0x20 { '_' } else { c })
+        .map(|c| {
+            if FORBIDDEN.contains(&c) || (c as u32) < 0x20 {
+                '_'
+            } else {
+                c
+            }
+        })
         .collect();
 
     let cleaned = cleaned.trim_end_matches([' ', '.']).to_string();
@@ -34,10 +40,18 @@ pub fn sanitize_file_name(raw: &str) -> Result<String> {
     }
 
     let stem = cleaned.split('.').next().unwrap_or("").to_uppercase();
-    let cleaned = if RESERVED.contains(&stem.as_str()) { format!("_{cleaned}") } else { cleaned };
+    let cleaned = if RESERVED.contains(&stem.as_str()) {
+        format!("_{cleaned}")
+    } else {
+        cleaned
+    };
 
     // Windows MAX_PATH friendly.
-    let cleaned = if cleaned.len() > 200 { cleaned[..200].to_string() } else { cleaned };
+    let cleaned = if cleaned.len() > 200 {
+        cleaned[..200].to_string()
+    } else {
+        cleaned
+    };
 
     Ok(cleaned)
 }
@@ -67,7 +81,11 @@ pub fn create_preallocated(path: &Path, size: Option<u64>) -> Result<File> {
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)?;
     }
-    let file = OpenOptions::new().create(true).read(true).write(true).open(path)?;
+    let file = OpenOptions::new()
+        .create(true)
+        .read(true)
+        .write(true)
+        .open(path)?;
     if let Some(size) = size {
         file.set_len(size)?;
     }
@@ -104,7 +122,10 @@ mod tests {
     #[test]
     fn strips_traversal() {
         assert_eq!(sanitize_file_name("../../evil.exe").unwrap(), "evil.exe");
-        assert_eq!(sanitize_file_name("C:\\Windows\\sys.dll").unwrap(), "sys.dll");
+        assert_eq!(
+            sanitize_file_name("C:\\Windows\\sys.dll").unwrap(),
+            "sys.dll"
+        );
         assert_eq!(sanitize_file_name("a<b>c.txt").unwrap(), "a_b_c.txt");
         assert_eq!(sanitize_file_name("CON.txt").unwrap(), "_CON.txt");
         assert!(sanitize_file_name("   ").is_err());

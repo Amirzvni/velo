@@ -36,13 +36,35 @@ pub type Result<T> = std::result::Result<T, ManagerError>;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Event {
-    Progress { id: i64, downloaded: u64, total: Option<u64>, bytes_per_sec: u64, segments: u16 },
-    Started { id: i64, file_name: String, total: Option<u64> },
-    Finished { id: i64, path: String },
-    Failed { id: i64, error: String },
-    Paused { id: i64 },
-    Queued { id: i64 },
-    Removed { id: i64 },
+    Progress {
+        id: i64,
+        downloaded: u64,
+        total: Option<u64>,
+        bytes_per_sec: u64,
+        segments: u16,
+    },
+    Started {
+        id: i64,
+        file_name: String,
+        total: Option<u64>,
+    },
+    Finished {
+        id: i64,
+        path: String,
+    },
+    Failed {
+        id: i64,
+        error: String,
+    },
+    Paused {
+        id: i64,
+    },
+    Queued {
+        id: i64,
+    },
+    Removed {
+        id: i64,
+    },
 }
 
 /// A download currently in flight.
@@ -186,8 +208,12 @@ impl Manager {
             }
             if let Err(e) = self.spawn_one(row.clone()).await {
                 tracing::error!("failed to start {}: {e}", row.id);
-                self.store.set_status(row.id, status::FAILED, Some(&e.to_string()))?;
-                let _ = self.events.send(Event::Failed { id: row.id, error: e.to_string() });
+                self.store
+                    .set_status(row.id, status::FAILED, Some(&e.to_string()))?;
+                let _ = self.events.send(Event::Failed {
+                    id: row.id,
+                    error: e.to_string(),
+                });
             }
         }
         Ok(())
@@ -197,7 +223,9 @@ impl Manager {
         self.store.set_status(row.id, status::RUNNING, None)?;
 
         // Respect what we learned about this host from an earlier 429.
-        let host = url::Url::parse(&row.url).ok().and_then(|u| u.host_str().map(String::from));
+        let host = url::Url::parse(&row.url)
+            .ok()
+            .and_then(|u| u.host_str().map(String::from));
         let segments = match &host {
             Some(h) => self
                 .store
@@ -213,7 +241,11 @@ impl Manager {
             url: row.url.clone(),
             out_dir: row.out_dir.clone(),
             // "…" is the placeholder we store before probing knows the real name.
-            file_name: if row.file_name == "…" { None } else { Some(row.file_name.clone()) },
+            file_name: if row.file_name == "…" {
+                None
+            } else {
+                Some(row.file_name.clone())
+            },
             headers: row.headers.clone(),
             segments,
         };
@@ -228,8 +260,11 @@ impl Manager {
         let id = row.id;
         let events = self.events.clone();
         let store = self.store.clone();
-        let handle = download(&self.client, spec, resume, move |p: ProgressSnapshot| {
-            match p.status {
+        let handle = download(
+            &self.client,
+            spec,
+            resume,
+            move |p: ProgressSnapshot| match p.status {
                 DownloadStatus::Running => {
                     let _ = events.send(Event::Progress {
                         id,
@@ -243,8 +278,8 @@ impl Manager {
                 _ => {
                     let _ = store.set_progress(id, p.downloaded);
                 }
-            }
-        })
+            },
+        )
         .await?;
 
         let handle = Arc::new(handle);
@@ -266,7 +301,13 @@ impl Manager {
         });
 
         let pausing = Arc::new(AtomicBool::new(false));
-        self.active.lock().insert(id, Active { handle: handle.clone(), pausing: pausing.clone() });
+        self.active.lock().insert(
+            id,
+            Active {
+                handle: handle.clone(),
+                pausing: pausing.clone(),
+            },
+        );
 
         // Watcher: journals segment cursors, then settles the final status and
         // frees the slot so the next queued download can start.
@@ -304,10 +345,13 @@ impl Manager {
                                 let _ = me.store.set_host_limit(h, c.max(1));
                             }
                         }
-                        let _ = me.store.set_status(id, status::FAILED, Some("download failed"));
                         let _ = me
-                            .events
-                            .send(Event::Failed { id, error: "download failed".into() });
+                            .store
+                            .set_status(id, status::FAILED, Some("download failed"));
+                        let _ = me.events.send(Event::Failed {
+                            id,
+                            error: "download failed".into(),
+                        });
                     }
                     _ => {}
                 }
