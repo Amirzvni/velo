@@ -1,12 +1,12 @@
 [workspace]
 resolver = "2"
-members = ["crates/velo-core", "crates/velo-cli", "src-tauri"]
+members = ["crates/velo-core", "crates/velo-cli"]
 
 [workspace.package]
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-repository = "https://github.com/velo-dm/velo"
+repository = "https://github.com/Amirzvni/velo"
 rust-version = "1.77"
 
 [workspace.dependencies]

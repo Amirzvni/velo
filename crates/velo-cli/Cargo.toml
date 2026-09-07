@@ -1,0 +1,19 @@
+[package]
+name = "velo-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Headless test harness for the Velo engine"
+
+[[bin]]
+name = "velo"
+path = "src/main.rs"
+
+[dependencies]
+velo-core = { path = "../velo-core" }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

@@ -1,0 +1,23 @@
+[package]
+name = "velo-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+description = "Velo download engine"
+
+[dependencies]
+tokio = { workspace = true }
+reqwest = { workspace = true }
+serde = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+url = { workspace = true }
+bytes = { workspace = true }
+futures-util = { workspace = true }
+parking_lot = { workspace = true }
+percent-encoding = "2"
+
+[dev-dependencies]
+tokio = { workspace = true }
