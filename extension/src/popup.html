@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Velo</title>
+    <style>
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      body {
+        width: 280px;
+        background: #0d0d0d;
+        color: #e6e6e6;
+        font-family: "Rajdhani", "Segoe UI", system-ui, sans-serif;
+        font-size: 14px;
+        padding: 16px;
+      }
+      .head { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+      .mark {
+        width: 20px; height: 20px; display: grid; place-items: center;
+        background: #fcee0a; color: #0d0d0d; font-weight: 700; font-size: 13px;
+        clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+      }
+      .name { font-weight: 700; letter-spacing: 0.2em; font-size: 13px; }
+      .state {
+        display: flex; align-items: center; gap: 7px;
+        padding: 10px 12px; background: #141414; border: 1px solid #2a2a2a;
+        font-size: 13px; margin-bottom: 12px;
+      }
+      .dot { width: 8px; height: 8px; background: #5a5a5a; flex: 0 0 auto; }
+      .dot.ok { background: #39ff14; }
+      .dot.bad { background: #ff003c; }
+      .toggle {
+        display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+        font-size: 13px; color: #8a8a8a; cursor: pointer;
+      }
+      .toggle input { accent-color: #fcee0a; }
+      button {
+        width: 100%; background: #fcee0a; color: #0d0d0d; border: none;
+        font-family: inherit; font-weight: 700; font-size: 12px;
+        text-transform: uppercase; letter-spacing: 0.07em; padding: 10px; cursor: pointer;
+        clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+      }
+      button:hover:not(:disabled) { background: #fff86b; }
+      button:disabled { opacity: 0.4; cursor: not-allowed; }
+      .msg {
+        font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px;
+        margin-top: 10px; min-height: 15px; line-height: 1.4; color: #8a8a8a;
+      }
+      .hint {
+        font-size: 11px; color: #5a5a5a; line-height: 1.5;
+        margin-top: 12px; border-top: 1px solid #2a2a2a; padding-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="head">
+      <span class="mark">V</span>
+      <span class="name">VELO</span>
+    </div>
+
+    <div class="state">
+      <span class="dot" id="dot"></span>
+      <span id="stateText">Checking…</span>
+    </div>
+
+    <label class="toggle">
+      <input type="checkbox" id="intercept" />
+      <span>Send browser downloads to Velo</span>
+    </label>
+
+    <button id="connect">Connect to Velo</button>
+    <div class="msg" id="msg"></div>
+
+    <div class="hint">
+      Right-click a page and choose "Download all links with Velo", or press Alt+V.
+    </div>
+
+    <script type="module" src="popup.js"></script>
+  </body>
+</html>

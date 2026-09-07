@@ -103,6 +103,9 @@ export const useDownloads = defineStore("downloads", {
           this.rows = this.rows.filter((r) => r.id !== e.id);
           delete this.live[e.id];
           break;
+        case "confirm":
+          // App.vue owns the prompt; the row appears once it is accepted.
+          break;
       }
     },
   },

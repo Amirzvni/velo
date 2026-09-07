@@ -39,6 +39,7 @@ pub struct Settings {
     pub max_concurrent: usize,
     pub default_dir: String,
     pub default_segments: u8,
+    pub confirm_downloads: bool,
 }
 
 #[tauri::command]
@@ -125,10 +126,36 @@ pub fn get_settings(state: tauri::State<AppState>) -> CmdResult<Settings> {
         max_concurrent: state.manager.max_concurrent(),
         default_dir: paths::default_download_dir().to_string_lossy().into_owned(),
         default_segments: 8,
+        confirm_downloads: state.manager.confirm_browser_downloads(),
     })
 }
 
 #[tauri::command]
 pub fn set_max_concurrent(state: tauri::State<AppState>, n: usize) -> CmdResult<()> {
     state.manager.set_max_concurrent(n).map_err(e)
+}
+
+/// The user answered the "start this download?" prompt.
+#[tauri::command]
+pub fn confirm_download(state: tauri::State<AppState>, id: i64, start: bool) -> CmdResult<()> {
+    state.manager.confirm(id, start).map_err(e)
+}
+
+#[tauri::command]
+pub fn set_confirm_downloads(state: tauri::State<AppState>, on: bool) -> CmdResult<()> {
+    state.manager.set_confirm_browser_downloads(on).map_err(e)
+}
+
+/// The user clicked Allow or Deny on the browser pairing prompt.
+#[tauri::command]
+pub fn answer_pairing(ctrl: tauri::State<crate::api::PairControl>, allow: bool) -> CmdResult<bool> {
+    Ok(ctrl.answer(allow))
+}
+
+/// If a prompt was already waiting when the UI loaded, show it.
+#[tauri::command]
+pub fn pending_pairing(
+    ctrl: tauri::State<crate::api::PairControl>,
+) -> CmdResult<Option<crate::api::PairRequest>> {
+    Ok(ctrl.peek())
 }

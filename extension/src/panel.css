@@ -1,0 +1,189 @@
+/* Panel styling. Scoped to a shadow root, so no page can override it. */
+
+:host,
+* {
+  box-sizing: border-box;
+}
+
+.velo-panel {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 380px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  z-index: 2147483647;
+  background: #141414;
+  border: 1px solid #2a2a2a;
+  color: #e6e6e6;
+  font-family: "Rajdhani", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  box-shadow: 0 0 0 1px rgba(252, 238, 10, 0.15);
+}
+
+.velo-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #2a2a2a;
+}
+.velo-mark {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  background: #fcee0a;
+  color: #0d0d0d;
+  font-weight: 700;
+  font-size: 12px;
+  clip-path: polygon(0 0, calc(100% - 5px) 0, 100% 5px, 100% 100%, 5px 100%, 0 calc(100% - 5px));
+}
+.velo-title {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.velo-x {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: #8a8a8a;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+}
+.velo-x:hover {
+  color: #ff003c;
+}
+
+.velo-sub {
+  padding: 8px 12px 0;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #8a8a8a;
+}
+.velo-count {
+  color: #00f0ff;
+}
+
+.velo-tools {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+}
+.velo-mini {
+  background: transparent;
+  border: 1px solid #2a2a2a;
+  color: #8a8a8a;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.velo-mini:hover {
+  color: #fcee0a;
+  border-color: #fcee0a;
+}
+.velo-filter {
+  flex: 1;
+  min-width: 0;
+  background: #1c1c1c;
+  border: 1px solid #2a2a2a;
+  color: #e6e6e6;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  outline: none;
+}
+.velo-filter:focus {
+  border-color: #00f0ff;
+}
+
+.velo-list {
+  flex: 1;
+  overflow-y: auto;
+  border-top: 1px solid #2a2a2a;
+  border-bottom: 1px solid #2a2a2a;
+}
+.velo-list::-webkit-scrollbar {
+  width: 8px;
+}
+.velo-list::-webkit-scrollbar-track {
+  background: #0d0d0d;
+}
+.velo-list::-webkit-scrollbar-thumb {
+  background: #2a2a2a;
+}
+
+.velo-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  border-bottom: 1px solid #1c1c1c;
+}
+.velo-row:hover {
+  background: #1c1c1c;
+}
+.velo-row input {
+  accent-color: #fcee0a;
+  flex: 0 0 auto;
+}
+.velo-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.velo-tag {
+  flex: 0 0 auto;
+  font-family: "JetBrains Mono", Consolas, monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #8a8a8a;
+  border: 1px solid #2a2a2a;
+  padding: 1px 5px;
+}
+
+.velo-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+.velo-note {
+  font-size: 11px;
+  color: #8a8a8a;
+  font-family: "JetBrains Mono", Consolas, monospace;
+}
+.velo-go {
+  margin-left: auto;
+  background: #fcee0a;
+  color: #0d0d0d;
+  border: none;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 8px 16px;
+  cursor: pointer;
+  clip-path: polygon(0 0, calc(100% - 7px) 0, 100% 7px, 100% 100%, 7px 100%, 0 calc(100% - 7px));
+}
+.velo-go:hover:not(:disabled) {
+  background: #fff86b;
+}
+.velo-go:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

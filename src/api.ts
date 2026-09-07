@@ -2,7 +2,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 
-export type Status = "queued" | "running" | "paused" | "completed" | "failed";
+export type Status = "pending" | "queued" | "running" | "paused" | "completed" | "failed";
 
 export interface DownloadRow {
   id: number;
@@ -29,6 +29,19 @@ export interface Settings {
   max_concurrent: number;
   default_dir: string;
   default_segments: number;
+  confirm_downloads: boolean;
+}
+
+export interface ConfirmRequest {
+  id: number;
+  url: string;
+  file_name: string;
+  out_dir: string;
+  /** Filled in when the probe comes back; null means still checking. */
+  total?: number | null;
+  mime?: string | null;
+  resumable?: boolean;
+  probed?: boolean;
 }
 
 export interface AddRequest {
@@ -40,6 +53,17 @@ export interface AddRequest {
   scheduled_at?: number;
 }
 
+export interface PairRequest {
+  extension_id: string;
+  browser: string;
+}
+
+export interface ApiInfo {
+  port: number;
+  token: string;
+  version: string;
+}
+
 export type VeloEvent =
   | { type: "progress"; id: number; downloaded: number; total: number | null; bytes_per_sec: number; segments: number }
   | { type: "started"; id: number; file_name: string; total: number | null }
@@ -47,7 +71,16 @@ export type VeloEvent =
   | { type: "failed"; id: number; error: string }
   | { type: "paused"; id: number }
   | { type: "queued"; id: number }
-  | { type: "removed"; id: number };
+  | { type: "removed"; id: number }
+  | { type: "confirm"; id: number; url: string; file_name: string; out_dir: string }
+  | {
+      type: "confirm_details";
+      id: number;
+      file_name: string;
+      total: number | null;
+      mime: string | null;
+      resumable: boolean;
+    };
 
 export const api = {
   add: (req: AddRequest) => invoke<number>("add_download", { req }),
@@ -60,7 +93,18 @@ export const api = {
     invoke<void>("remove_download", { id, deleteFile }),
   settings: () => invoke<Settings>("get_settings"),
   setMaxConcurrent: (n: number) => invoke<void>("set_max_concurrent", { n }),
+  confirmDownload: (id: number, start: boolean) =>
+    invoke<void>("confirm_download", { id, start }),
+  setConfirmDownloads: (on: boolean) => invoke<void>("set_confirm_downloads", { on }),
   onEvent: (cb: (e: VeloEvent) => void) => listen<VeloEvent>("velo://event", (ev) => cb(ev.payload)),
+
+  // Browser pairing.
+  answerPairing: (allow: boolean) => invoke<boolean>("answer_pairing", { allow }),
+  pendingPairing: () => invoke<PairRequest | null>("pending_pairing"),
+  onPairRequest: (cb: (r: PairRequest) => void) =>
+    listen<PairRequest>("velo://pair-request", (ev) => cb(ev.payload)),
+  onApiReady: (cb: (i: ApiInfo) => void) =>
+    listen<ApiInfo>("velo://api-ready", (ev) => cb(ev.payload)),
 };
 
 export function humanBytes(n: number | null | undefined): string {

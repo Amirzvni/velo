@@ -7,12 +7,18 @@ const emit = defineEmits<{ (e: "close"): void; (e: "saved", s: Settings): void }
 
 const concurrent = ref(props.settings.max_concurrent);
 const scanlines = ref(localStorage.getItem("velo.scanlines") !== "off");
+const confirmDownloads = ref(props.settings.confirm_downloads);
 
 async function save() {
   await api.setMaxConcurrent(concurrent.value);
+  await api.setConfirmDownloads(confirmDownloads.value);
   localStorage.setItem("velo.scanlines", scanlines.value ? "on" : "off");
   document.getElementById("app")?.setAttribute("data-scanlines", scanlines.value ? "on" : "off");
-  emit("saved", { ...props.settings, max_concurrent: concurrent.value });
+  emit("saved", {
+    ...props.settings,
+    max_concurrent: concurrent.value,
+    confirm_downloads: confirmDownloads.value,
+  });
   emit("close");
 }
 </script>
@@ -31,6 +37,11 @@ async function save() {
       <label class="field">
         <span class="label">Save files to</span>
         <input :value="settings.default_dir" class="input" readonly />
+      </label>
+
+      <label class="check">
+        <input v-model="confirmDownloads" type="checkbox" />
+        <span>Ask before starting browser downloads</span>
       </label>
 
       <label class="check">

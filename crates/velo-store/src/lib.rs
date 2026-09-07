@@ -59,6 +59,34 @@ impl Store {
 
     // ---- downloads -------------------------------------------------------
 
+    /// Insert with an explicit starting status. Browser downloads land as
+    /// `pending` when the user wants to confirm them first.
+    pub fn insert_download_with_status(&self, d: &NewDownload, st: &str) -> Result<i64> {
+        let conn = self.conn.lock();
+        let ts = now();
+        let headers = serde_json::to_string(&d.headers)?;
+        let file_name = d.file_name.clone().unwrap_or_else(|| "…".to_string());
+        conn.execute(
+            "INSERT INTO downloads
+             (url, file_name, out_dir, headers, segments, batch_id, scheduled_at,
+              priority, status, created_at, updated_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?10)",
+            params![
+                d.url,
+                file_name,
+                d.out_dir,
+                headers,
+                d.segments.unwrap_or(8),
+                d.batch_id,
+                d.scheduled_at,
+                d.priority.unwrap_or(100),
+                st,
+                ts,
+            ],
+        )?;
+        Ok(conn.last_insert_rowid())
+    }
+
     pub fn insert_download(&self, d: &NewDownload) -> Result<i64> {
         let conn = self.conn.lock();
         let ts = now();

@@ -35,6 +35,15 @@ pub fn run() {
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 while let Some(ev) = events.recv().await {
+                    // A prompt the user cannot see is useless, so surface the
+                    // window whenever one arrives.
+                    if matches!(ev, velo_manager::Event::Confirm { .. }) {
+                        if let Some(w) = handle.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.unminimize();
+                            let _ = w.set_focus();
+                        }
+                    }
                     if let Err(err) = handle.emit("velo://event", &ev) {
                         tracing::warn!("failed to emit event: {err}");
                     }
@@ -44,16 +53,26 @@ pub fn run() {
             // Local HTTP API for the browser extension.
             let api_mgr = manager.clone();
             let api_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                match api::start(api_mgr).await {
-                    Ok(info) => {
-                        let _ = api_handle.emit("velo://api-ready", &info);
-                        tracing::info!("extension can connect on port {}", info.port);
-                    }
-                    Err(e) => tracing::error!("could not start local api: {e}"),
-                }
-            });
+            let ctrl_handle = app.handle().clone();
 
+            let (info, control) = tauri::async_runtime::block_on(async move {
+                let notify_handle = api_handle.clone();
+                api::start(api_mgr, move |req| {
+                    // Bring the window forward so the prompt is not missed.
+                    if let Some(w) = notify_handle.get_webview_window("main") {
+                        let _ = w.show();
+                        let _ = w.unminimize();
+                        let _ = w.set_focus();
+                    }
+                    let _ = notify_handle.emit("velo://pair-request", &req);
+                })
+                .await
+            })?;
+
+            tracing::info!("extension can connect on port {}", info.port);
+            let _ = ctrl_handle.emit("velo://api-ready", &info);
+
+            app.manage(control);
             app.manage(AppState { manager });
             Ok(())
         })
@@ -66,6 +85,10 @@ pub fn run() {
             commands::remove_download,
             commands::get_settings,
             commands::set_max_concurrent,
+            commands::confirm_download,
+            commands::set_confirm_downloads,
+            commands::answer_pairing,
+            commands::pending_pairing,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Velo");

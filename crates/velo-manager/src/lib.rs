@@ -65,6 +65,21 @@ pub enum Event {
     Removed {
         id: i64,
     },
+    /// A browser download is waiting for the user to confirm it.
+    Confirm {
+        id: i64,
+        url: String,
+        file_name: String,
+        out_dir: String,
+    },
+    /// Probe finished for a pending download: real name, size and type.
+    ConfirmDetails {
+        id: i64,
+        file_name: String,
+        total: Option<u64>,
+        mime: Option<String>,
+        resumable: bool,
+    },
 }
 
 /// A download currently in flight.
@@ -72,6 +87,19 @@ struct Active {
     handle: Arc<DownloadHandle>,
     /// Set when the user asked to pause, so we do not mark it failed.
     pausing: Arc<AtomicBool>,
+}
+
+/// Best guess at a name before we have probed the server, just for the prompt.
+fn file_name_from_url(url: &str) -> String {
+    url::Url::parse(url)
+        .ok()
+        .and_then(|u| {
+            u.path_segments()
+                .and_then(|s| s.filter(|p| !p.is_empty()).next_back())
+                .map(String::from)
+        })
+        .filter(|s| !s.is_empty())
+        .unwrap_or_else(|| "download".into())
 }
 
 pub struct Manager {
@@ -125,6 +153,100 @@ impl Manager {
         let id = self.store.insert_download(d)?;
         let _ = self.events.send(Event::Queued { id });
         Ok(id)
+    }
+
+    /// Add a download that will not start until `confirm` is called.
+    /// Used for links handed over by the browser, so the user sees what is
+    /// about to happen and where it will be saved.
+    pub fn add_pending(self: &Arc<Self>, d: &NewDownload) -> Result<i64> {
+        let id = self.store.insert_download_with_status(d, status::PENDING)?;
+        let name = d
+            .file_name
+            .clone()
+            .unwrap_or_else(|| file_name_from_url(&d.url));
+        let _ = self.events.send(Event::Confirm {
+            id,
+            url: d.url.clone(),
+            file_name: name,
+            out_dir: d.out_dir.clone(),
+        });
+
+        // Fill in the real details behind the prompt.
+        self.probe_pending(
+            id,
+            DownloadSpec {
+                url: d.url.clone(),
+                out_dir: d.out_dir.clone(),
+                file_name: d.file_name.clone(),
+                headers: d.headers.clone(),
+                segments: d.segments.unwrap_or(8),
+            },
+        );
+
+        Ok(id)
+    }
+
+    /// Ask the server what this file actually is, without downloading it.
+    /// Runs while the confirmation prompt is open so the user sees a real
+    /// name and size instead of a guess from the url.
+    fn probe_pending(self: &Arc<Self>, id: i64, spec: DownloadSpec) {
+        let me = self.clone();
+        tokio::spawn(async move {
+            match velo_core::probe::probe(&me.client, &spec).await {
+                Ok(info) => {
+                    let _ = me.store.apply_probe(
+                        id,
+                        &info.final_url,
+                        &info.file_name,
+                        "",
+                        info.total_size,
+                        info.supports_range,
+                        info.etag.as_deref(),
+                        info.last_modified.as_deref(),
+                        info.mime.as_deref(),
+                    );
+                    let resumable = info.resumable();
+                    let _ = me.events.send(Event::ConfirmDetails {
+                        id,
+                        file_name: info.file_name,
+                        total: info.total_size,
+                        mime: info.mime,
+                        resumable,
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!("could not probe pending download {id}: {e}");
+                }
+            }
+        });
+    }
+
+    /// The user answered a confirmation prompt.
+    pub fn confirm(&self, id: i64, start: bool) -> Result<()> {
+        if start {
+            self.store.set_status(id, status::QUEUED, None)?;
+            let _ = self.events.send(Event::Queued { id });
+        } else {
+            self.store.delete(id)?;
+            let _ = self.events.send(Event::Removed { id });
+        }
+        Ok(())
+    }
+
+    /// Whether browser downloads should ask first. Defaults to yes.
+    pub fn confirm_browser_downloads(&self) -> bool {
+        self.store
+            .get_setting("confirm_downloads")
+            .ok()
+            .flatten()
+            .map(|v| v != "false")
+            .unwrap_or(true)
+    }
+
+    pub fn set_confirm_browser_downloads(&self, on: bool) -> Result<()> {
+        self.store
+            .set_setting("confirm_downloads", if on { "true" } else { "false" })?;
+        Ok(())
     }
 
     /// Enqueue many links at once. This is what "download all links" calls.
@@ -253,7 +375,9 @@ impl Manager {
         // Resume only if we have both a path and saved cursors.
         let saved = self.store.load_segments(row.id).unwrap_or_default();
         let resume = match (&row.path, saved.is_empty()) {
-            (Some(p), false) => Some((PathBuf::from(p), saved)),
+            // An empty path comes from the pre-confirmation probe, not a real
+            // partial file, so it must never be treated as resumable.
+            (Some(p), false) if !p.is_empty() => Some((PathBuf::from(p), saved)),
             _ => None,
         };
 

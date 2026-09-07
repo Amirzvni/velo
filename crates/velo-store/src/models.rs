@@ -57,6 +57,9 @@ pub struct BatchRow {
 
 /// Status strings kept in one place so SQL and Rust never drift apart.
 pub mod status {
+    /// Came from the browser and is waiting for the user to confirm it.
+    /// The scheduler ignores these, so nothing downloads until they say yes.
+    pub const PENDING: &str = "pending";
     pub const QUEUED: &str = "queued";
     pub const RUNNING: &str = "running";
     pub const PAUSED: &str = "paused";
