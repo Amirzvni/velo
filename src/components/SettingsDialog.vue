@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from "vue";
+import { onMounted, ref } from "vue";
 import { api, type Settings } from "../api";
 
 const props = defineProps<{ settings: Settings }>();
@@ -8,10 +8,16 @@ const emit = defineEmits<{ (e: "close"): void; (e: "saved", s: Settings): void }
 const concurrent = ref(props.settings.max_concurrent);
 const scanlines = ref(localStorage.getItem("velo.scanlines") !== "off");
 const confirmDownloads = ref(props.settings.confirm_downloads);
+const autostart = ref(false);
+
+onMounted(async () => {
+  autostart.value = await api.getAutostart();
+});
 
 async function save() {
   await api.setMaxConcurrent(concurrent.value);
   await api.setConfirmDownloads(confirmDownloads.value);
+  await api.setAutostart(autostart.value);
   localStorage.setItem("velo.scanlines", scanlines.value ? "on" : "off");
   document.getElementById("app")?.setAttribute("data-scanlines", scanlines.value ? "on" : "off");
   emit("saved", {
@@ -42,6 +48,11 @@ async function save() {
       <label class="check">
         <input v-model="confirmDownloads" type="checkbox" />
         <span>Ask before starting browser downloads</span>
+      </label>
+
+      <label class="check">
+        <input v-model="autostart" type="checkbox" />
+        <span>Start Velo when I sign in</span>
       </label>
 
       <label class="check">

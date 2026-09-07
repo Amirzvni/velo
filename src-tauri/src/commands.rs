@@ -116,8 +116,12 @@ pub fn resume_download(state: tauri::State<AppState>, id: i64) -> CmdResult<()> 
 }
 
 #[tauri::command]
-pub fn remove_download(state: tauri::State<AppState>, id: i64, delete_file: bool) -> CmdResult<()> {
-    state.manager.remove(id, delete_file).map_err(e)
+pub async fn remove_download(
+    state: tauri::State<'_, AppState>,
+    id: i64,
+    delete_file: bool,
+) -> CmdResult<()> {
+    state.manager.remove(id, delete_file).await.map_err(e)
 }
 
 #[tauri::command]
@@ -133,6 +137,23 @@ pub fn get_settings(state: tauri::State<AppState>) -> CmdResult<Settings> {
 #[tauri::command]
 pub fn set_max_concurrent(state: tauri::State<AppState>, n: usize) -> CmdResult<()> {
     state.manager.set_max_concurrent(n).map_err(e)
+}
+
+#[tauri::command]
+pub fn get_autostart(app: tauri::AppHandle) -> CmdResult<bool> {
+    use tauri_plugin_autostart::ManagerExt;
+    app.autolaunch().is_enabled().map_err(e)
+}
+
+#[tauri::command]
+pub fn set_autostart(app: tauri::AppHandle, on: bool) -> CmdResult<()> {
+    use tauri_plugin_autostart::ManagerExt;
+    let al = app.autolaunch();
+    if on {
+        al.enable().map_err(e)
+    } else {
+        al.disable().map_err(e)
+    }
 }
 
 /// The user answered the "start this download?" prompt.

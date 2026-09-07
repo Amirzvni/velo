@@ -2,9 +2,17 @@
   "manifest_version": 3,
   "name": "Velo Download Manager",
   "version": "0.1.0",
-  "description": "Send downloads to Velo, and grab every link on a page at once.",
-  "permissions": ["downloads", "storage", "contextMenus", "scripting", "activeTab"],
-  "host_permissions": ["http://127.0.0.1/*"],
+  "description": "Send browser downloads to the Velo download manager, and grab every link you select on a page at once.",
+  "permissions": [
+    "downloads",
+    "storage",
+    "contextMenus",
+    "scripting",
+    "activeTab"
+  ],
+  "host_permissions": [
+    "http://127.0.0.1/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -25,16 +33,30 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["panel.css"],
-      "matches": ["http://*/*", "https://*/*"]
+      "resources": [
+        "panel.css"
+      ],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ]
     }
   ],
   "content_scripts": [
     {
-      "matches": ["http://*/*", "https://*/*"],
-      "js": ["content.js"],
-      "css": ["panel.css"],
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "css": [
+        "panel.css"
+      ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "author": "Amir Rezvani",
+  "homepage_url": "https://github.com/Amirzvni/velo"
 }

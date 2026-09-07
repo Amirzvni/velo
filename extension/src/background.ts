@@ -15,11 +15,34 @@ async function ready(): Promise<import("./velo").VeloConfig> {
   return connect();
 }
 
+/**
+ * Urls we just handed back to the browser because Velo was unreachable.
+ * Without this the fallback download fires onCreated again, we try Velo
+ * again, fail again, and hand it back again, forever.
+ */
+const handedBack = new Map<string, number>();
+const HANDBACK_TTL = 60_000;
+
+function markHandedBack(url: string) {
+  handedBack.set(url, Date.now());
+}
+
+function wasHandedBack(url: string): boolean {
+  const at = handedBack.get(url);
+  if (at === undefined) return false;
+  if (Date.now() - at > HANDBACK_TTL) {
+    handedBack.delete(url);
+    return false;
+  }
+  return true;
+}
+
 /** Schemes and cases we must never touch, or we break the browser. */
 function shouldIntercept(item: chrome.downloads.DownloadItem): boolean {
   if (!item.url) return false;
   if (!/^https?:\/\//i.test(item.url)) return false; // blob:, data:, file:
   if (item.url.startsWith("http://127.0.0.1")) return false; // our own api
+  if (wasHandedBack(item.url)) return false; // we already gave up on this one
   return true;
 }
 
@@ -57,9 +80,15 @@ chrome.downloads.onCreated.addListener(async (item) => {
     });
     notify("Sent to Velo", item.filename || item.url);
   } catch (e) {
-    // If Velo is closed, let the browser keep the download rather than lose it.
+    // Velo is closed or refused. Give the download back to the browser, and
+    // remember that we did, so we do not grab it again the moment it restarts.
     notify("Velo could not take this download", String(e));
-    chrome.downloads.download({ url: item.url });
+    markHandedBack(item.url);
+    try {
+      await chrome.downloads.download({ url: item.url });
+    } catch (err) {
+      notify("Could not hand the download back to the browser", String(err));
+    }
   }
 });
 

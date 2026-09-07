@@ -96,6 +96,8 @@ export const api = {
   confirmDownload: (id: number, start: boolean) =>
     invoke<void>("confirm_download", { id, start }),
   setConfirmDownloads: (on: boolean) => invoke<void>("set_confirm_downloads", { on }),
+  getAutostart: () => invoke<boolean>("get_autostart"),
+  setAutostart: (on: boolean) => invoke<void>("set_autostart", { on }),
   onEvent: (cb: (e: VeloEvent) => void) => listen<VeloEvent>("velo://event", (ev) => cb(ev.payload)),
 
   // Browser pairing.

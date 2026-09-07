@@ -3,6 +3,7 @@
 
 mod api;
 mod commands;
+mod tray;
 
 use commands::AppState;
 use std::sync::Arc;
@@ -19,9 +20,21 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            Some(vec!["--minimized"]),
+        ))
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
             paths::ensure_dirs()?;
+            tray::build(app.handle())?;
+
+            // Launched by the OS at login: start out of sight in the tray.
+            if std::env::args().any(|a| a == "--minimized") {
+                if let Some(w) = app.get_webview_window("main") {
+                    let _ = w.hide();
+                }
+            }
             let store = Arc::new(Store::open(paths::database_path())?);
             let (manager, mut events) = Manager::new(store)?;
             // The scheduler spawns tasks, so it must start inside Tauri's
@@ -85,11 +98,21 @@ pub fn run() {
             commands::remove_download,
             commands::get_settings,
             commands::set_max_concurrent,
+            commands::get_autostart,
+            commands::set_autostart,
             commands::confirm_download,
             commands::set_confirm_downloads,
             commands::answer_pairing,
             commands::pending_pairing,
         ])
+        .on_window_event(|window, event| {
+            // Closing the window parks Velo in the tray. Downloads keep going
+            // and the extension can still reach us. Quit is in the tray menu.
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                api.prevent_close();
+                let _ = window.hide();
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running Velo");
 }

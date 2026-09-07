@@ -334,15 +334,42 @@ impl Manager {
         Ok(())
     }
 
-    pub fn remove(&self, id: i64, delete_file: bool) -> Result<()> {
-        if let Some(a) = self.active.lock().get(&id) {
-            a.pausing.store(true, Ordering::Release);
-            a.handle.stop();
+    pub async fn remove(&self, id: i64, delete_file: bool) -> Result<()> {
+        let was_running = {
+            let active = self.active.lock();
+            match active.get(&id) {
+                Some(a) => {
+                    a.pausing.store(true, Ordering::Release);
+                    a.handle.stop();
+                    true
+                }
+                None => false,
+            }
+        };
+
+        // Windows will not delete a file that is still open, and the workers
+        // need a moment to notice the stop flag and drop their handles.
+        if was_running {
+            for _ in 0..20 {
+                tokio::time::sleep(Duration::from_millis(100)).await;
+                if !self.active.lock().contains_key(&id) {
+                    break;
+                }
+            }
         }
-        if delete_file {
-            if let Ok(row) = self.store.get(id) {
-                if let Some(p) = row.path {
-                    let _ = std::fs::remove_file(p);
+
+        // A finished file is the user's; only they say when it goes. Anything
+        // unfinished is a partial file that is useless on its own, so removing
+        // the download takes the bytes with it.
+        if let Ok(row) = self.store.get(id) {
+            let finished = row.status == status::COMPLETED;
+            if delete_file || !finished {
+                if let Some(p) = row.path.filter(|p| !p.is_empty()) {
+                    if let Err(e) = std::fs::remove_file(&p) {
+                        if e.kind() != std::io::ErrorKind::NotFound {
+                            tracing::warn!("could not delete {p}: {e}");
+                        }
+                    }
                 }
             }
         }
