@@ -42,6 +42,10 @@ async function save() {
         <button class="btn" @click="emit('close')">Cancel</button>
         <button class="btn btn-primary" @click="save">Save</button>
       </div>
+
+      <div class="credit">
+        Velo — created by <span class="who">Amir Rezvani</span> with love, for everyone.
+      </div>
     </div>
   </div>
 </template>
@@ -92,5 +96,16 @@ async function save() {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.credit {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-faint);
+  letter-spacing: 0.04em;
+}
+.who {
+  color: var(--yellow);
 }
 </style>

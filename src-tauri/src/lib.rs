@@ -1,6 +1,7 @@
 //! Velo desktop shell. Owns the store and manager, forwards manager events to
 //! the webview, and exposes the command surface in `commands`.
 
+mod api;
 mod commands;
 
 use commands::AppState;
@@ -37,6 +38,19 @@ pub fn run() {
                     if let Err(err) = handle.emit("velo://event", &ev) {
                         tracing::warn!("failed to emit event: {err}");
                     }
+                }
+            });
+
+            // Local HTTP API for the browser extension.
+            let api_mgr = manager.clone();
+            let api_handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                match api::start(api_mgr).await {
+                    Ok(info) => {
+                        let _ = api_handle.emit("velo://api-ready", &info);
+                        tracing::info!("extension can connect on port {}", info.port);
+                    }
+                    Err(e) => tracing::error!("could not start local api: {e}"),
                 }
             });
 
